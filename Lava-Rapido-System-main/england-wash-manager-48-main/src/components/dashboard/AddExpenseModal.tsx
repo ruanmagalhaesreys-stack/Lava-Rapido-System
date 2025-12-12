@@ -50,6 +50,7 @@ interface AddExpenseModalProps {
 const AddExpenseModal = ({ open, onOpenChange, userId, onSuccess }: AddExpenseModalProps) => {
   const [loading, setLoading] = useState(false);
   const [memberId, setMemberId] = useState<string | null>(null);
+  const [businessId, setBusinessId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     value: "",
     category: "",
@@ -68,12 +69,13 @@ const AddExpenseModal = ({ open, onOpenChange, userId, onSuccess }: AddExpenseMo
     try {
       const { data, error } = await supabase
         .from("business_members")
-        .select("id")
+        .select("id, business_id")
         .eq("user_id", userId)
         .single();
 
       if (error) throw error;
       setMemberId(data.id);
+      setBusinessId(data.business_id);
     } catch (error) {
       console.error("Error fetching member ID:", error);
     }
@@ -104,10 +106,15 @@ const AddExpenseModal = ({ open, onOpenChange, userId, onSuccess }: AddExpenseMo
 
     setLoading(true);
     try {
+      if (!businessId || !memberId) {
+        throw new Error("Informações do estabelecimento não encontradas");
+      }
+
       const currentMonthYear = format(new Date(), "yyyy-MM");
-      
+
       const expenseData: any = {
         user_id: userId,
+        business_id: businessId,
         expense_name: validatedData.category,
         category: validatedData.category,
         description: validatedData.description || null,

@@ -95,7 +95,8 @@ const AddServiceModal = ({
   const [searchResults, setSearchResults] = useState<Client[]>([]);
   const [servicePrices, setServicePrices] = useState<ServicePrice[]>([]);
   const [memberId, setMemberId] = useState<string | null>(null);
-  
+  const [businessId, setBusinessId] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     clientName: "",
     clientPhone: "",
@@ -118,12 +119,13 @@ const AddServiceModal = ({
     try {
       const { data, error } = await supabase
         .from("business_members")
-        .select("id")
+        .select("id, business_id")
         .eq("user_id", userId)
         .single();
 
       if (error) throw error;
       setMemberId(data.id);
+      setBusinessId(data.business_id);
     } catch (error) {
       console.error("Error fetching member ID:", error);
     }
@@ -192,7 +194,7 @@ const AddServiceModal = ({
   const handleVehicleTypeChange = (vehicleType: string) => {
     setFormData(prev => {
       const newData = { ...prev, vehicleType };
-      
+
       // If service is already selected, update price
       if (prev.serviceName && prev.serviceName !== "Outros") {
         const price = servicePrices.find(
@@ -200,7 +202,7 @@ const AddServiceModal = ({
         )?.price || 0;
         newData.value = price.toFixed(2);
       }
-      
+
       return newData;
     });
   };
@@ -208,7 +210,7 @@ const AddServiceModal = ({
   const handleServiceChange = (serviceName: string) => {
     setFormData(prev => {
       const newData = { ...prev, serviceName };
-      
+
       // If "Outros", clear the value for manual input
       if (serviceName === "Outros") {
         newData.value = "";
@@ -219,7 +221,7 @@ const AddServiceModal = ({
         )?.price || 0;
         newData.value = price.toFixed(2);
       }
-      
+
       return newData;
     });
   };
@@ -237,6 +239,11 @@ const AddServiceModal = ({
 
     const validatedData = validation.data;
     const valueNum = parseFloat(validatedData.value);
+
+    if (!businessId || !memberId) {
+      toast.error("Erro ao identificar informações do estabelecimento");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -256,6 +263,7 @@ const AddServiceModal = ({
           .from("clients")
           .insert({
             user_id: userId,
+            business_id: businessId,
             client_name: formData.clientName,
             client_phone: formData.clientPhone,
             car_make_model: formData.carMakeModel,
@@ -286,6 +294,7 @@ const AddServiceModal = ({
         .from("daily_services")
         .insert({
           user_id: userId,
+          business_id: businessId,
           client_id: clientId,
           client_name: formData.clientName,
           client_phone: formData.clientPhone,
@@ -363,7 +372,7 @@ const AddServiceModal = ({
           {/* Client Info Section */}
           <div className="p-6 bg-secondary/20 rounded-xl space-y-4 border border-border/50">
             <h3 className="font-bold text-lg">👤 Dados do Cliente</h3>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="clientName" className="font-semibold">Nome Completo *</Label>
@@ -431,7 +440,7 @@ const AddServiceModal = ({
           {/* Vehicle Type Section */}
           <div className="p-6 bg-secondary/20 rounded-xl space-y-4 border border-border/50">
             <h3 className="font-bold text-lg">🚗 Tipo do Veículo *</h3>
-            
+
             <RadioGroup
               value={formData.vehicleType}
               onValueChange={handleVehicleTypeChange}
@@ -451,7 +460,7 @@ const AddServiceModal = ({
           {/* Service Section */}
           <div className="p-6 bg-secondary/20 rounded-xl space-y-4 border border-border/50">
             <h3 className="font-bold text-lg">📋 Serviço e Valor</h3>
-            
+
             <div>
               <Label htmlFor="serviceName" className="font-semibold">Serviço *</Label>
               <Select
